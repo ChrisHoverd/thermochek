@@ -1,30 +1,75 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include <chrono>
+//#include <wiringPi.h>
+
 
 using namespace std;
 using namespace cv;
-double g_scale = 2.0;
 
 //declare global variables
 CascadeClassifier face_cascade;
 Mat frame;
 Mat gray;
 string cascade_path = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_frontalface_default.xml";
+double g_scale = 1.0;
+//int green_LED = 1;
+//int red_LED = 0;
 
-static void detectAndDraw(Mat& img, CascadeClassifier& cascade, double scale) {
+//Timer class used to control calculation intervals for the face cascades
+class Timer
+{
+public:
+    Timer() : beg_(clock_::now()) {}
+    void reset() { beg_ = clock_::now(); }
+    double elapsed() const {
+        return std::chrono::duration_cast<second_>
+            (clock_::now() - beg_).count();
+    }
+
+private:
+    typedef std::chrono::high_resolution_clock clock_;
+    typedef std::chrono::duration<double, std::ratio<1> > second_;
+    std::chrono::time_point<clock_> beg_;
+};
+
+
+
+static void detectAndDraw(Mat& img, CascadeClassifier& cascade, double scale, Timer& tmr) {
     vector<Rect> faces;
     cvtColor(img, gray, COLOR_BGR2GRAY);
     resize(gray, gray, { (int)((double)gray.size().width / scale), (int)((double)gray.size().height / scale) });
-    cascade.detectMultiScale(gray, faces, 1.1, 3, 0, Size(30, 30));
-    for (const auto& r : faces) {
-        rectangle(gray, { r.x , r.y }, { r.x + r.width, r.y + r.height }, Scalar(255, 0, 0), 2);
-    }
+    
+    if (tmr.elapsed() > 5) 
+    {
+        cascade.detectMultiScale(gray, faces, 1.1, 3, 0, Size(30, 30));
+        std::cout << "Looking for faces..." << std::endl;
+       
+        for (const auto& r : faces) {
+            rectangle(gray, { r.x , r.y }, { r.x + r.width, r.y + r.height }, Scalar(255, 0, 0), 2);
+        }
 
+        if (faces.size() >= 1) {
+            std::cout << faces.size() << " Face(s) Found!" << std::endl;
+            //digitalWrite(green_LED, HIGH)
+            //red LED off(red_LED, LOW)
+        }
+        else {
+            std::cout << "No Face(s) Found!" << std::endl;
+            //green LED OFF (red_LED, HIGH)
+            //red LED ON (green_LED, LOW)
+        }
+        tmr.reset();
+    }
 }
 
 int main()
 
-{
+{   
+    //wiringPiSetup();
+    //pinMode(green_LED, OUTPUT);
+    //pinMode(red_LED, OUTPUT);
+    Timer tmr;
     VideoCapture camera(0);
     if (!camera.isOpened()) {
         std::cerr << "ERROR: Could not open camera" << std::endl;
@@ -33,12 +78,15 @@ int main()
     while (true) {
         camera.read(frame);
         if (!face_cascade.load(cascade_path)) {
-            std::cerr << "ERROR: Can not load classifier..." << std::endl;
+            std::cerr << "ERROR: Could not load classifier..." << std::endl;
         }
 
-        detectAndDraw(frame, face_cascade, g_scale);
+        detectAndDraw(frame, face_cascade, g_scale, tmr);
         imshow("Webcam", gray);
         if (waitKey(10) >= 0) {
+            //Turn LEDs off
+            //(red_LED, LOW)
+            //(green_LED, LOW)
             break;
         }
     }
