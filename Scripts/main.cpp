@@ -1,7 +1,14 @@
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/objdetect.hpp>
+#include <opencv2/videoio.hpp>
+#include <opencv2/video.hpp>
+#include <iostream>
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <chrono>
-//#include <wiringPi.h>
+#include <wiringPi.h>
 
 
 using namespace std;
@@ -11,10 +18,10 @@ using namespace cv;
 CascadeClassifier face_cascade;
 Mat frame;
 Mat gray;
-string cascade_path = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_frontalface_default.xml";
+string cascade_path = "haarcascade_frontalface_default.xml";
 double g_scale = 1.0;
-//int green_LED = 1;
-//int red_LED = 0;
+int green_LED = 1;
+int red_LED = 0;
 
 //Timer class used to control calculation intervals for the face cascades
 class Timer
@@ -39,25 +46,25 @@ static void detectAndDraw(Mat& img, CascadeClassifier& cascade, double scale, Ti
     vector<Rect> faces;
     cvtColor(img, gray, COLOR_BGR2GRAY);
     resize(gray, gray, { (int)((double)gray.size().width / scale), (int)((double)gray.size().height / scale) });
-    
-    if (tmr.elapsed() > 5) 
+
+    if (tmr.elapsed() > 5)
     {
         cascade.detectMultiScale(gray, faces, 1.1, 3, 0, Size(30, 30));
         std::cout << "Looking for faces..." << std::endl;
-       
+
         for (const auto& r : faces) {
             rectangle(gray, { r.x , r.y }, { r.x + r.width, r.y + r.height }, Scalar(255, 0, 0), 2);
         }
 
         if (faces.size() >= 1) {
             std::cout << faces.size() << " Face(s) Found!" << std::endl;
-            //digitalWrite(green_LED, HIGH)
-            //red LED off(red_LED, LOW)
+            digitalWrite(green_LED, HIGH);
+            digitalWrite(red_LED, LOW);
         }
         else {
             std::cout << "No Face(s) Found!" << std::endl;
-            //green LED OFF (red_LED, HIGH)
-            //red LED ON (green_LED, LOW)
+            digitalWrite(red_LED, HIGH);
+            digitalWrite(green_LED, LOW);
         }
         tmr.reset();
     }
@@ -65,10 +72,10 @@ static void detectAndDraw(Mat& img, CascadeClassifier& cascade, double scale, Ti
 
 int main()
 
-{   
-    //wiringPiSetup();
-    //pinMode(green_LED, OUTPUT);
-    //pinMode(red_LED, OUTPUT);
+{
+    wiringPiSetup();
+    pinMode(green_LED, OUTPUT);
+    pinMode(red_LED, OUTPUT);
     Timer tmr;
     VideoCapture camera(0);
     if (!camera.isOpened()) {
@@ -85,11 +92,12 @@ int main()
         imshow("Webcam", gray);
         if (waitKey(10) >= 0) {
             //Turn LEDs off
-            //(red_LED, LOW)
-            //(green_LED, LOW)
+            digitalWrite(red_LED, LOW);
+            digitalWrite(green_LED, LOW);
             break;
         }
     }
 
     return 0;
 }
+
